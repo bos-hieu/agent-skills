@@ -1,0 +1,12 @@
+{
+  "name": "agent-skills",
+  "description": "A collection of reusable skills for AI coding agents: generating CLAUDE.md and more",
+  "version": "1.0.0",
+  "author": {
+    "name": "bos-hieu"
+  },
+  "homepage": "https://github.com/bos-hieu/agent-skills",
+  "repository": "https://github.com/bos-hieu/agent-skills",
+  "license": "MIT",
+  "keywords": ["skills", "claude-instructions", "agent", "best-practices", "workflows"]
+}
