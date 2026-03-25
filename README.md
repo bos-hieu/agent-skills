@@ -12,13 +12,11 @@ A collection of reusable skills for AI coding agents. Each skill teaches your co
 
 ### Claude Code
 
-This is a **private** repository. Claude Code supports installing plugins from private repos via SSH.
-
-**Prerequisites:** Your SSH key must be registered with GitHub (`ssh -T git@github.com` should succeed).
+This is a **private** repository. Claude Code supports installing plugins from private repos.
 
 1. Register this repository as a private plugin marketplace:
    ```bash
-   /plugin marketplace add ssh://git@github.com:bos-hieu/agent-skills.git
+   /plugin marketplace add https://github.com/bos-hieu/agent-skills.git
    ```
 
 2. Install the plugin (choose a scope):
@@ -30,7 +28,7 @@ This is a **private** repository. Claude Code supports installing plugins from p
    /plugin install agent-skills@agent-skills-dev --scope project
    ```
 
-> **How it works:** Claude Code reuses your local git credentials (SSH keys, ssh-agent). As long as `git clone ssh://git@github.com:bos-hieu/agent-skills.git` works on your machine, plugin installation will work too. Team members need SSH access to this repo.
+> **How it works:** Claude Code reuses your local git credentials. As long as `git clone https://github.com/bos-hieu/agent-skills.git` works on your machine, plugin installation will work too. Team members need access to this repo.
 
 ### Cursor
 
@@ -47,7 +45,7 @@ Or search for "agent-skills" in the Cursor plugin marketplace.
 Clone this private repo and tell Codex to follow the install instructions:
 
 ```bash
-git clone ssh://git@github.com:bos-hieu/agent-skills.git ~/.codex/agent-skills
+git clone https://github.com/bos-hieu/agent-skills.git ~/.codex/agent-skills
 ```
 
 Then tell Codex:
@@ -63,7 +61,7 @@ Custom instructions are automatically picked up from `.github/copilot-instructio
 ### Gemini CLI
 
 ```bash
-gemini extensions install ssh://git@github.com:bos-hieu/agent-skills.git
+gemini extensions install https://github.com/bos-hieu/agent-skills.git
 ```
 
 To update:
