@@ -6,7 +6,7 @@
     "name": "bos-hieu"
   },
   "homepage": "https://github.com/bos-hieu/agent-skills",
-  "repository": "https://github.com/bos-hieu/agent-skills",
+  "repository": "ssh://git@github.com:bos-hieu/agent-skills.git",
   "license": "MIT",
   "keywords": ["skills", "claude-instructions", "agent", "best-practices", "workflows"]
 }
