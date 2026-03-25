@@ -7,8 +7,8 @@
   "plugins": [
     {
       "name": "agent-skills",
-      "description": "A collection of reusable skills for AI coding agents: database querying, generating CLAUDE.md and more",
-      "version": "1.0.0",
+      "description": "A collection of reusable skills for AI coding agents: database, pdf, xlsx, browser-test, go-issue-solver, generating CLAUDE.md",
+      "version": "1.1.0",
       "source": "./"
     }
   ]
