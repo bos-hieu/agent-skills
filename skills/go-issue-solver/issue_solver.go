@@ -50,6 +50,9 @@ func main() {
 		if *nameFlag == "" {
 			log.Fatal("--scaffold requires --name")
 		}
+		if strings.ContainsAny(*nameFlag, "/\\") || strings.Contains(*nameFlag, "..") {
+			log.Fatal("--name must not contain path separators or '..'")
+		}
 		scaffold(root, *scaffoldFlag, *nameFlag)
 	default:
 		flag.Usage()

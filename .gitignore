@@ -1,0 +1,18 @@
+# Database config files with credentials
+.claude/db-config.yaml
+**/db-config.yaml
+
+# Environment files
+.env
+.env.*
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Go binaries
+/build/
+*.exe

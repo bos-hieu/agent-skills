@@ -75,6 +75,7 @@ func main() {
 	formatFlag := flag.String("format", "table", "Output format: table, csv, json")
 	noHeaderFlag := flag.Bool("no-header", false, "Suppress column headers")
 	collectionFlag := flag.String("collection", "", "MongoDB collection name (required for --query with MongoDB)")
+	readOnlyFlag := flag.Bool("read-only", false, "Reject non-SELECT SQL queries (safety guard)")
 
 	// Config management flags
 	addDBFlag := flag.String("add-db", "", "Add a database to config file")
@@ -181,6 +182,9 @@ func main() {
 		case *describeFlag != "":
 			describeTable(db, cred.Driver, *describeFlag)
 		case *queryFlag != "":
+			if *readOnlyFlag {
+				enforceReadOnly(*queryFlag)
+			}
 			runQuery(db, *queryFlag, *rowsFlag, *formatFlag, *noHeaderFlag)
 		default:
 			fmt.Println("Specify one of: --tables, --describe <table>, --query <sql>")
@@ -693,6 +697,17 @@ func maskDSN(dsn string) string {
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+func enforceReadOnly(query string) {
+	q := strings.TrimSpace(strings.ToUpper(query))
+	allowed := []string{"SELECT", "SHOW", "DESCRIBE", "EXPLAIN", "WITH"}
+	for _, prefix := range allowed {
+		if strings.HasPrefix(q, prefix) {
+			return
+		}
+	}
+	log.Fatalf("--read-only: only SELECT/SHOW/DESCRIBE/EXPLAIN/WITH queries are allowed, got: %s", strings.SplitN(strings.TrimSpace(query), " ", 2)[0])
 }
 
 func findCred(creds []dbCredential, name string) (dbCredential, bool) {
