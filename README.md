@@ -10,14 +10,30 @@ A collection of reusable skills for AI coding agents. Each skill teaches your co
 
 ## Installation
 
-### Claude Code (via Plugin Marketplace)
+### Claude Code
 
-Register the marketplace and install the plugin:
+**Install as a private plugin (recommended):**
 
-```bash
-/plugin marketplace add bos-hieu/agent-skills
-/plugin install agent-skills@agent-skills
-```
+1. Register this repository as a plugin marketplace:
+   ```bash
+   /plugin marketplace add bos-hieu/agent-skills
+   ```
+
+2. Install the plugin:
+   ```bash
+   /plugin install agent-skills@agent-skills-dev
+   ```
+
+3. Choose installation scope:
+   ```bash
+   # User-wide (default) — available in all your projects
+   /plugin install agent-skills@agent-skills-dev --scope user
+
+   # Project-only — shared with team via version control
+   /plugin install agent-skills@agent-skills-dev --scope project
+   ```
+
+> **Private repos:** If this is a private repository, Claude Code uses your existing git credentials. As long as `git clone` works for you (via SSH key, GitHub PAT, or credential helper), plugin installation will work automatically.
 
 ### Cursor
 
@@ -92,6 +108,7 @@ When your coding agent encounters a task matching a skill's trigger, it follows 
 ### Claude Code
 
 ```bash
+/plugin marketplace update
 /plugin update agent-skills
 ```
 
