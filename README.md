@@ -6,7 +6,12 @@ A collection of reusable skills for AI coding agents. Each skill teaches your co
 
 | Skill | Description |
 |-------|-------------|
-| [generating-claude-instructions](skills/generating-claude-instructions/SKILL.md) | Generate a CLAUDE.md file at the project root by deeply exploring the actual source code. The file must contain only verified facts — never guess or infer. |
+| [database](skills/database/SKILL.md) | Query PostgreSQL, MySQL, SQLite, and MongoDB databases. Auto-detects connections from config files and env vars. |
+| [pdf](skills/pdf/SKILL.md) | Extract text from PDF files with page ranges, keyword search, and content summarization. |
+| [xlsx](skills/xlsx/SKILL.md) | Read Excel .xlsx/.xlsm files with sheet selection, column filtering, CSV export, and keyword search. |
+| [browser-test](skills/browser-test/SKILL.md) | Run and debug Playwright browser tests (API, E2E, smoke) with smart filtering and failure reporting. |
+| [go-issue-solver](skills/go-issue-solver/SKILL.md) | Analyze and solve Go codebase issues — search, diagnose, scaffold fixes, and run tests. |
+| [generating-claude-instructions](skills/generating-claude-instructions/SKILL.md) | Generate a CLAUDE.md file by deeply exploring source code. Only verified facts, never guesses. |
 
 ## Installation
 
@@ -19,13 +24,14 @@ This is a **private** repository. Claude Code supports installing plugins from p
    /plugin marketplace add https://github.com/bos-hieu/agent-skills.git
    ```
 
-2. Install the plugin (choose a scope):
+2. Install the plugin:
    ```bash
-   # User-wide (default) — available in all your projects
-   /plugin install agent-skills@agent-skills-dev --scope user
+   /plugin install agent-skills
+   ```
 
-   # Project-only — shared with team via version control
-   /plugin install agent-skills@agent-skills-dev --scope project
+3. Reload to activate:
+   ```bash
+   /reload-plugins
    ```
 
 > **How it works:** Claude Code reuses your local git credentials. As long as `git clone https://github.com/bos-hieu/agent-skills.git` works on your machine, plugin installation will work too. Team members need access to this repo.
@@ -108,10 +114,17 @@ When your coding agent encounters a task matching a skill's trigger, it follows 
 
 ### Claude Code
 
+When a new version is released, the simplest way to upgrade is to uninstall and reinstall:
+
 ```bash
-/plugin marketplace update
-/plugin update agent-skills
+/plugin uninstall agent-skills
+/plugin marketplace remove agent-skills-dev
+/plugin marketplace add https://github.com/bos-hieu/agent-skills.git
+/plugin install agent-skills
+/reload-plugins
 ```
+
+> **Why not `/plugin update`?** The update command checks the version in `plugin.json`. If the cached marketplace still has the old version, it reports "already at latest". A clean reinstall guarantees the latest code.
 
 ### Codex
 
