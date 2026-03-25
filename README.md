@@ -11,6 +11,7 @@ A collection of reusable skills for AI coding agents. Each skill teaches your co
 | [xlsx](skills/xlsx/SKILL.md) | Read Excel .xlsx/.xlsm files with sheet selection, column filtering, CSV export, and keyword search. |
 | [browser-test](skills/browser-test/SKILL.md) | Run and debug Playwright browser tests (API, E2E, smoke) with smart filtering and failure reporting. |
 | [go-issue-solver](skills/go-issue-solver/SKILL.md) | Analyze and solve Go codebase issues — search, diagnose, scaffold fixes, and run tests. |
+| [confluence](skills/confluence/SKILL.md) | Manage Confluence pages — create, read, update, search, and delete wiki pages via REST API. |
 | [generating-claude-instructions](skills/generating-claude-instructions/SKILL.md) | Generate a CLAUDE.md file by deeply exploring source code. Only verified facts, never guesses. |
 
 ## Installation
