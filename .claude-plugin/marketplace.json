@@ -1,0 +1,15 @@
+{
+  "name": "agent-skills-dev",
+  "description": "Development marketplace for agent-skills plugin",
+  "owner": {
+    "name": "bos-hieu"
+  },
+  "plugins": [
+    {
+      "name": "agent-skills",
+      "description": "A collection of reusable skills for AI coding agents: generating CLAUDE.md and more",
+      "version": "1.0.0",
+      "source": "./"
+    }
+  ]
+}

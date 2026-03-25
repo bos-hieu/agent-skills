@@ -1,0 +1,10 @@
+{
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "description": "A collection of reusable skills for AI coding agents",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bos-hieu/agent-skills.git"
+  },
+  "license": "MIT"
+}
