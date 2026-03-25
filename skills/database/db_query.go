@@ -75,7 +75,8 @@ func main() {
 	formatFlag := flag.String("format", "table", "Output format: table, csv, json")
 	noHeaderFlag := flag.Bool("no-header", false, "Suppress column headers")
 	collectionFlag := flag.String("collection", "", "MongoDB collection name (required for --query with MongoDB)")
-	readOnlyFlag := flag.Bool("read-only", false, "Reject non-SELECT SQL queries (safety guard)")
+	readOnlyFlag := flag.Bool("read-only", true, "Enforce read-only queries via database transaction (enabled by default)")
+	readWriteFlag := flag.Bool("read-write", false, "Allow data-modifying queries (disables --read-only)")
 
 	// Config management flags
 	addDBFlag := flag.String("add-db", "", "Add a database to config file")
@@ -98,6 +99,9 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	// --read-write disables --read-only
+	readOnly := *readOnlyFlag && !*readWriteFlag
 
 	// Handle config management commands first
 	switch {
@@ -158,7 +162,7 @@ func main() {
 			if *collectionFlag == "" {
 				log.Fatal("--collection is required for MongoDB queries")
 			}
-			runQueryMongo(client, dbName, *collectionFlag, *queryFlag, *rowsFlag, *formatFlag, *noHeaderFlag)
+			runQueryMongo(client, dbName, *collectionFlag, *queryFlag, *rowsFlag, *formatFlag, *noHeaderFlag, readOnly)
 		default:
 			fmt.Println("Specify one of: --tables, --describe <collection>, --query <json> --collection <name>")
 			flag.Usage()
@@ -182,10 +186,7 @@ func main() {
 		case *describeFlag != "":
 			describeTable(db, cred.Driver, *describeFlag)
 		case *queryFlag != "":
-			if *readOnlyFlag {
-				enforceReadOnly(*queryFlag)
-			}
-			runQuery(db, *queryFlag, *rowsFlag, *formatFlag, *noHeaderFlag)
+			runQuery(db, *queryFlag, *rowsFlag, *formatFlag, *noHeaderFlag, readOnly)
 		default:
 			fmt.Println("Specify one of: --tables, --describe <table>, --query <sql>")
 			flag.Usage()
@@ -699,17 +700,6 @@ func maskDSN(dsn string) string {
 	return strings.Join(parts, " ")
 }
 
-func enforceReadOnly(query string) {
-	q := strings.TrimSpace(strings.ToUpper(query))
-	allowed := []string{"SELECT", "SHOW", "DESCRIBE", "EXPLAIN", "WITH"}
-	for _, prefix := range allowed {
-		if strings.HasPrefix(q, prefix) {
-			return
-		}
-	}
-	log.Fatalf("--read-only: only SELECT/SHOW/DESCRIBE/EXPLAIN/WITH queries are allowed, got: %s", strings.SplitN(strings.TrimSpace(query), " ", 2)[0])
-}
-
 func findCred(creds []dbCredential, name string) (dbCredential, bool) {
 	for _, c := range creds {
 		if strings.EqualFold(c.Name, name) {
@@ -860,8 +850,19 @@ func describeTable(db *sql.DB, driver, table string) {
 	w.Flush()
 }
 
-func runQuery(db *sql.DB, query string, maxRows int, format string, noHeader bool) {
-	rows, err := db.Query(query)
+func runQuery(db *sql.DB, query string, maxRows int, format string, noHeader bool, readOnly bool) {
+	var rows *sql.Rows
+	var err error
+	if readOnly {
+		tx, txErr := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
+		if txErr != nil {
+			log.Fatalf("cannot start read-only transaction: %v", txErr)
+		}
+		defer tx.Rollback()
+		rows, err = tx.Query(query)
+	} else {
+		rows, err = db.Query(query)
+	}
 	if err != nil {
 		log.Fatalf("query error: %v", err)
 	}
@@ -1115,7 +1116,17 @@ func bsonTypeName(v interface{}) string {
 	}
 }
 
-func runQueryMongo(client *mongo.Client, dbName, collection, query string, maxRows int, format string, noHeader bool) {
+// rejectUnsafeMongoOps blocks MongoDB operators that execute server-side
+// JavaScript ($where) when read-only mode is active.
+func rejectUnsafeMongoOps(filter bson.D) {
+	for _, elem := range filter {
+		if elem.Key == "$where" {
+			log.Fatalf("--read-only: $where operator is not allowed (executes server-side JavaScript)")
+		}
+	}
+}
+
+func runQueryMongo(client *mongo.Client, dbName, collection, query string, maxRows int, format string, noHeader bool, readOnly bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	coll := client.Database(dbName).Collection(collection)
@@ -1127,6 +1138,10 @@ func runQueryMongo(client *mongo.Client, dbName, collection, query string, maxRo
 		if err := bson.UnmarshalExtJSON([]byte(query), false, &filter); err != nil {
 			log.Fatalf("invalid JSON filter: %v", err)
 		}
+	}
+
+	if readOnly {
+		rejectUnsafeMongoOps(filter)
 	}
 
 	opts := options.Find().SetLimit(int64(maxRows))
