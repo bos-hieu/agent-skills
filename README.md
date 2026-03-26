@@ -12,6 +12,12 @@ A collection of reusable skills for AI coding agents. Each skill teaches your co
 | [browser-test](skills/browser-test/SKILL.md) | Run and debug Playwright browser tests (API, E2E, smoke) with smart filtering and failure reporting. |
 | [go-issue-solver](skills/go-issue-solver/SKILL.md) | Analyze and solve Go codebase issues — search, diagnose, scaffold fixes, and run tests. |
 | [confluence](skills/confluence/SKILL.md) | Manage Confluence pages — create, read, update, search, and delete wiki pages via REST API. |
+| [jira](skills/jira/SKILL.md) | Manage Jira issues — create, update, transition, search, comment, and assign issues via REST API. |
+| [google-docs](skills/google-docs/SKILL.md) | Manage Google Docs — create, read, append, and find-replace in documents via REST API. |
+| [google-drive](skills/google-drive/SKILL.md) | Manage Google Drive — list, upload, download, search, and share files via REST API. |
+| [google-sheets](skills/google-sheets/SKILL.md) | Manage Google Sheets — create, read, write, append rows, and manage sheets via REST API. |
+| [test-cases](skills/test-cases/SKILL.md) | Generate comprehensive test cases, test plans, coverage analysis, and bug report templates for QA. |
+| [prd](skills/prd/SKILL.md) | Generate PRDs, user stories, feature specs, competitive analysis, and release notes for PMs. |
 | [generating-claude-instructions](skills/generating-claude-instructions/SKILL.md) | Generate a CLAUDE.md file by deeply exploring source code. Only verified facts, never guesses. |
 
 ## Installation
