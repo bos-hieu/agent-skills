@@ -164,7 +164,7 @@ func getServiceAccountToken(saFile string) string {
 	}))
 	claims := base64URLEncode(mustJSON(map[string]interface{}{
 		"iss":   sa.ClientEmail,
-		"scope": "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive",
+		"scope": "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.readonly",
 		"aud":   sa.TokenURI,
 		"iat":   now,
 		"exp":   now + 3600,
