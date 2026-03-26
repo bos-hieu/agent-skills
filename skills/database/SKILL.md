@@ -131,6 +131,12 @@ MONGODB_URI=mongodb://...               # -> name "mongodb"
 | `--tables` | List all tables/collections | `--tables` |
 | `--describe <table>` | Show columns/fields, types, and nullability | `--describe users` |
 | `--collection <name>` | MongoDB collection name (required for `--query` with MongoDB) | `--collection users` |
+| `--sort <json>` | MongoDB sort specification as JSON | `--sort '{"createdAt": -1}'` |
+| `--project <json>` | MongoDB field projection as JSON | `--project '{"name": 1, "email": 1}'` |
+| `--skip <n>` | Number of documents to skip (MongoDB pagination) | `--skip 20` |
+| `--aggregate <json>` | MongoDB aggregation pipeline as JSON array | `--aggregate '[{"$group": ...}]'` |
+| `--count` | Count documents matching the filter (MongoDB) | `--count --collection users` |
+| `--distinct <field>` | Get distinct values for a field (MongoDB) | `--distinct status` |
 | `--rows <n>` | Max result rows to display (default 20) | `--rows 50` |
 | `--format <table\|csv\|json>` | Output format (default: table) | `--format csv` |
 | `--no-header` | Suppress column headers in output | `--no-header` |
@@ -190,6 +196,37 @@ go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --query
 
 # Get all documents from a collection
 go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection orders --query '{}'
+
+# Sort results (1 = ascending, -1 = descending)
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --query '{}' --sort '{"createdAt": -1}'
+
+# Select specific fields with projection
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --query '{}' --project '{"name": 1, "email": 1}'
+
+# Pagination with skip + rows (limit)
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --query '{}' --sort '{"_id": 1}' --skip 20 --rows 10
+
+# Count documents matching a filter
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --count
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --count --query '{"status": "active"}'
+
+# Get distinct values for a field
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --distinct status
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --distinct status --query '{"age": {"$gt": 18}}'
+
+# Aggregation pipeline
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection orders --aggregate '[
+  {"$match": {"status": "completed"}},
+  {"$group": {"_id": "$userId", "total": {"$sum": "$amount"}}},
+  {"$sort": {"total": -1}}
+]'
+
+# Aggregation with $lookup (join)
+go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection orders --aggregate '[
+  {"$lookup": {"from": "users", "localField": "userId", "foreignField": "_id", "as": "user"}},
+  {"$unwind": "$user"},
+  {"$project": {"orderId": 1, "user.name": 1, "amount": 1}}
+]'
 
 # Export to JSON
 go run ${CLAUDE_SKILL_DIR}/db_query.go --db mongo-dev --collection users --query '{}' --format json --rows 100

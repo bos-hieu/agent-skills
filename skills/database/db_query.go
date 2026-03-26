@@ -75,6 +75,12 @@ func main() {
 	formatFlag := flag.String("format", "table", "Output format: table, csv, json")
 	noHeaderFlag := flag.Bool("no-header", false, "Suppress column headers")
 	collectionFlag := flag.String("collection", "", "MongoDB collection name (required for --query with MongoDB)")
+	sortFlag := flag.String("sort", "", "MongoDB sort specification as JSON (e.g. '{\"createdAt\": -1}')")
+	projectFlag := flag.String("project", "", "MongoDB projection as JSON (e.g. '{\"name\": 1, \"email\": 1}')")
+	skipFlag := flag.Int("skip", 0, "Number of documents to skip (MongoDB)")
+	aggregateFlag := flag.String("aggregate", "", "MongoDB aggregation pipeline as JSON array")
+	countFlag := flag.Bool("count", false, "Count documents matching the filter (MongoDB)")
+	distinctFlag := flag.String("distinct", "", "Get distinct values for a field (MongoDB)")
 	readOnlyFlag := flag.Bool("read-only", true, "Enforce read-only queries via database transaction (enabled by default)")
 	readWriteFlag := flag.Bool("read-write", false, "Allow data-modifying queries (disables --read-only)")
 
@@ -158,13 +164,28 @@ func main() {
 			listCollectionsMongo(client, dbName)
 		case *describeFlag != "":
 			describeCollectionMongo(client, dbName, *describeFlag, *rowsFlag)
+		case *aggregateFlag != "":
+			if *collectionFlag == "" {
+				log.Fatal("--collection is required for MongoDB aggregation")
+			}
+			runAggregateMongo(client, dbName, *collectionFlag, *aggregateFlag, *rowsFlag, *formatFlag, *noHeaderFlag, readOnly)
+		case *countFlag:
+			if *collectionFlag == "" {
+				log.Fatal("--collection is required for MongoDB count")
+			}
+			runCountMongo(client, dbName, *collectionFlag, *queryFlag, readOnly)
+		case *distinctFlag != "":
+			if *collectionFlag == "" {
+				log.Fatal("--collection is required for MongoDB distinct")
+			}
+			runDistinctMongo(client, dbName, *collectionFlag, *distinctFlag, *queryFlag, *rowsFlag, readOnly)
 		case *queryFlag != "":
 			if *collectionFlag == "" {
 				log.Fatal("--collection is required for MongoDB queries")
 			}
-			runQueryMongo(client, dbName, *collectionFlag, *queryFlag, *rowsFlag, *formatFlag, *noHeaderFlag, readOnly)
+			runQueryMongo(client, dbName, *collectionFlag, *queryFlag, *rowsFlag, *formatFlag, *noHeaderFlag, readOnly, *sortFlag, *projectFlag, *skipFlag)
 		default:
-			fmt.Println("Specify one of: --tables, --describe <collection>, --query <json> --collection <name>")
+			fmt.Println("Specify one of: --tables, --describe <collection>, --query <json> --collection <name>, --aggregate <pipeline>, --count, --distinct <field>")
 			flag.Usage()
 			os.Exit(1)
 		}
@@ -1116,35 +1137,95 @@ func bsonTypeName(v interface{}) string {
 	}
 }
 
+// unsafeMongoOps lists MongoDB operators that execute server-side JavaScript.
+var unsafeMongoOps = map[string]bool{
+	"$where":       true,
+	"$function":    true,
+	"$accumulator": true,
+}
+
 // rejectUnsafeMongoOps blocks MongoDB operators that execute server-side
-// JavaScript ($where) when read-only mode is active.
+// JavaScript when read-only mode is active. Recursively walks nested documents.
 func rejectUnsafeMongoOps(filter bson.D) {
-	for _, elem := range filter {
-		if elem.Key == "$where" {
-			log.Fatalf("--read-only: $where operator is not allowed (executes server-side JavaScript)")
+	rejectUnsafeKeys(filter)
+}
+
+// rejectUnsafeKeys recursively walks BSON structures to detect unsafe operators
+// nested inside $and, $or, $nor, $not, or any other compound expression.
+func rejectUnsafeKeys(v interface{}) {
+	switch val := v.(type) {
+	case bson.D:
+		for _, elem := range val {
+			if unsafeMongoOps[elem.Key] {
+				log.Fatalf("--read-only: %s operator is not allowed (executes server-side JavaScript)", elem.Key)
+			}
+			rejectUnsafeKeys(elem.Value)
+		}
+	case bson.A:
+		for _, item := range val {
+			rejectUnsafeKeys(item)
+		}
+	case bson.M:
+		for k, item := range val {
+			if unsafeMongoOps[k] {
+				log.Fatalf("--read-only: %s operator is not allowed (executes server-side JavaScript)", k)
+			}
+			rejectUnsafeKeys(item)
 		}
 	}
 }
 
-func runQueryMongo(client *mongo.Client, dbName, collection, query string, maxRows int, format string, noHeader bool, readOnly bool) {
+// parseMongoFilter parses a JSON string into a bson.D filter.
+func parseMongoFilter(query string) bson.D {
+	if query == "" || query == "{}" {
+		return bson.D{}
+	}
+	var filter bson.D
+	if err := bson.UnmarshalExtJSON([]byte(query), false, &filter); err != nil {
+		log.Fatalf("invalid JSON filter: %v", err)
+	}
+	return filter
+}
+
+func runQueryMongo(client *mongo.Client, dbName, collection, query string, maxRows int, format string, noHeader bool, readOnly bool, sortJSON string, projectJSON string, skip int) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	coll := client.Database(dbName).Collection(collection)
 
-	var filter bson.D
-	if query == "" || query == "{}" {
-		filter = bson.D{}
-	} else {
-		if err := bson.UnmarshalExtJSON([]byte(query), false, &filter); err != nil {
-			log.Fatalf("invalid JSON filter: %v", err)
-		}
-	}
+	filter := parseMongoFilter(query)
 
 	if readOnly {
 		rejectUnsafeMongoOps(filter)
 	}
 
 	opts := options.Find().SetLimit(int64(maxRows))
+
+	if skip > 0 {
+		opts.SetSkip(int64(skip))
+	}
+
+	if sortJSON != "" {
+		var sortDoc bson.D
+		if err := bson.UnmarshalExtJSON([]byte(sortJSON), false, &sortDoc); err != nil {
+			log.Fatalf("invalid --sort JSON: %v", err)
+		}
+		if readOnly {
+			rejectUnsafeKeys(sortDoc)
+		}
+		opts.SetSort(sortDoc)
+	}
+
+	if projectJSON != "" {
+		var projDoc bson.D
+		if err := bson.UnmarshalExtJSON([]byte(projectJSON), false, &projDoc); err != nil {
+			log.Fatalf("invalid --project JSON: %v", err)
+		}
+		if readOnly {
+			rejectUnsafeKeys(projDoc)
+		}
+		opts.SetProjection(projDoc)
+	}
+
 	cursor, err := coll.Find(ctx, filter, opts)
 	if err != nil {
 		log.Fatalf("query error: %v", err)
@@ -1156,6 +1237,121 @@ func runQueryMongo(client *mongo.Client, dbName, collection, query string, maxRo
 		log.Fatalf("cannot read results: %v", err)
 	}
 
+	printMongoDocs(docs, maxRows, format, noHeader)
+}
+
+// runAggregateMongo executes a MongoDB aggregation pipeline.
+func runAggregateMongo(client *mongo.Client, dbName, collection, pipeline string, maxRows int, format string, noHeader bool, readOnly bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	coll := client.Database(dbName).Collection(collection)
+
+	var stages bson.A
+	if err := bson.UnmarshalExtJSON([]byte(pipeline), false, &stages); err != nil {
+		log.Fatalf("invalid aggregation pipeline JSON: %v", err)
+	}
+
+	// In read-only mode, reject stages that modify data
+	if readOnly {
+		rejectUnsafeAggregateStages(stages)
+	}
+
+	// Always append a $limit stage to enforce maxRows cap, even if user
+	// provided their own $limit (MongoDB uses the smaller of the two).
+	stages = append(stages, bson.D{{Key: "$limit", Value: int64(maxRows)}})
+
+	cursor, err := coll.Aggregate(ctx, stages)
+	if err != nil {
+		log.Fatalf("aggregation error: %v", err)
+	}
+	defer cursor.Close(ctx)
+
+	var docs []bson.M
+	if err := cursor.All(ctx, &docs); err != nil {
+		log.Fatalf("cannot read aggregation results: %v", err)
+	}
+
+	printMongoDocs(docs, maxRows, format, noHeader)
+}
+
+// rejectUnsafeAggregateStages blocks aggregation stages that modify data or
+// execute server-side JavaScript when read-only mode is active.
+func rejectUnsafeAggregateStages(stages bson.A) {
+	unsafeStages := map[string]bool{
+		"$out":   true,
+		"$merge": true,
+	}
+	for _, s := range stages {
+		if stage, ok := s.(bson.D); ok {
+			for _, elem := range stage {
+				if unsafeStages[elem.Key] {
+					log.Fatalf("--read-only: %s stage is not allowed (modifies data)", elem.Key)
+				}
+			}
+		}
+		// Recursively check for $function/$accumulator/$where inside stage values
+		rejectUnsafeKeys(s)
+	}
+}
+
+// runCountMongo counts documents matching a filter.
+func runCountMongo(client *mongo.Client, dbName, collection, query string, readOnly bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	coll := client.Database(dbName).Collection(collection)
+
+	filter := parseMongoFilter(query)
+
+	if readOnly {
+		rejectUnsafeMongoOps(filter)
+	}
+
+	count, err := coll.CountDocuments(ctx, filter)
+	if err != nil {
+		log.Fatalf("count error: %v", err)
+	}
+
+	fmt.Printf("%d\n", count)
+}
+
+// runDistinctMongo gets distinct values for a field.
+func runDistinctMongo(client *mongo.Client, dbName, collection, field, query string, maxRows int, readOnly bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	coll := client.Database(dbName).Collection(collection)
+
+	filter := parseMongoFilter(query)
+
+	if readOnly {
+		rejectUnsafeMongoOps(filter)
+	}
+
+	result := coll.Distinct(ctx, field, filter)
+	if result.Err() != nil {
+		log.Fatalf("distinct error: %v", result.Err())
+	}
+
+	var values []interface{}
+	if err := result.Decode(&values); err != nil {
+		log.Fatalf("distinct decode error: %v", err)
+	}
+
+	displayed := len(values)
+	if maxRows > 0 && displayed > maxRows {
+		displayed = maxRows
+	}
+	for i := 0; i < displayed; i++ {
+		fmt.Println(mongoValueStr(values[i]))
+	}
+	if displayed < len(values) {
+		fmt.Printf("\n%d distinct value(s) shown out of %d (use --rows to show more)\n", displayed, len(values))
+	} else {
+		fmt.Printf("\n%d distinct value(s)\n", len(values))
+	}
+}
+
+// printMongoDocs formats and prints MongoDB documents.
+func printMongoDocs(docs []bson.M, maxRows int, format string, noHeader bool) {
 	if len(docs) == 0 {
 		fmt.Println("No documents found.")
 		return
