@@ -382,7 +382,7 @@ func listSpaces(cfg confluenceConfig, maxResults int, format string) {
 
 // listChildren lists child pages of a given page.
 func listChildren(cfg confluenceConfig, pageID string, maxResults int, format string) {
-	endpoint := fmt.Sprintf("/wiki/api/v2/pages/%s/children?limit=%d", url.PathEscape(pageID), maxResults)
+	endpoint := fmt.Sprintf("/wiki/api/v2/pages/%s/children/page?limit=%d", url.PathEscape(pageID), maxResults)
 	data, status, err := apiRequest(cfg, "GET", endpoint, nil)
 	if err != nil {
 		log.Fatalf("cannot list children: %v", err)
