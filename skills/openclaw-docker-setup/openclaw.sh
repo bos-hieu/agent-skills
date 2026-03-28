@@ -20,6 +20,20 @@ Commands:
   dashboard <name>          Get tokenized dashboard URL
   list                      List all OpenClaw instances
   status                    Show running status of all instances
+  plugin <name> <subcmd>    Manage plugins in an instance (see below)
+
+Plugin subcommands (openclaw.sh plugin <name> <subcmd> [args]):
+  install <package>         Install a plugin (ClawHub first, then npm)
+  install clawhub:<pkg>     Install from ClawHub only
+  install <path>            Install from local path
+  list                      List installed plugins
+  update <id>               Update a specific plugin
+  update --all              Update all plugins
+  enable <id>               Enable a plugin
+  disable <id>              Disable a plugin
+  status                    Show plugin operational summary
+  doctor                    Run plugin diagnostics
+  inspect <id>              Show plugin details
 
 Options:
   -p PORT   Gateway port (default: auto-assigned starting from 18789)
@@ -30,6 +44,9 @@ Examples:
   openclaw.sh onboard alice             # interactive setup inside container
   openclaw.sh start alice               # start gateway in background
   openclaw.sh list                      # show all instances
+  openclaw.sh plugin alice install my-plugin     # install a plugin
+  openclaw.sh plugin alice list                  # list installed plugins
+  openclaw.sh plugin alice update --all          # update all plugins
 EOF
   exit 1
 }
@@ -210,6 +227,26 @@ STARTEOF
   fi
 }
 
+cmd_plugin() {
+  local name="$1"; shift
+  local container
+  container=$(get_container_name "$name")
+  local instance_dir
+  instance_dir=$(get_instance_dir "$name")
+
+  if [[ ! -f "$instance_dir/instance.env" ]]; then
+    echo "Error: Instance '$name' not found. Run 'create' first."
+    exit 1
+  fi
+
+  if [[ $# -lt 1 ]]; then
+    echo "Error: 'plugin' requires a subcommand (install, list, update, enable, disable, status, doctor, inspect)."
+    usage
+  fi
+
+  docker exec "$container" openclaw plugins "$@"
+}
+
 cmd_dashboard() {
   local name="$1"
   local container
@@ -378,6 +415,11 @@ case "$command" in
   dashboard)
     [[ $# -lt 1 ]] && { echo "Error: 'dashboard' requires a name."; usage; }
     cmd_dashboard "$1"
+    ;;
+  plugin)
+    [[ $# -lt 1 ]] && { echo "Error: 'plugin' requires a name."; usage; }
+    local plugin_name="$1"; shift
+    cmd_plugin "$plugin_name" "$@"
     ;;
   *)
     echo "Unknown command: $command"
