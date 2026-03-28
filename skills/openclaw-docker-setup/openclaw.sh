@@ -25,7 +25,7 @@ Commands:
 Plugin subcommands (openclaw.sh plugin <name> <subcmd> [args]):
   install <package>         Install a plugin (ClawHub first, then npm)
   install clawhub:<pkg>     Install from ClawHub only
-  install <path>            Install from local path
+  install-local <path>      Copy local dir into container and install
   list                      List installed plugins
   update <id>               Update a specific plugin
   update --all              Update all plugins
@@ -44,9 +44,10 @@ Examples:
   openclaw.sh onboard alice             # interactive setup inside container
   openclaw.sh start alice               # start gateway in background
   openclaw.sh list                      # show all instances
-  openclaw.sh plugin alice install my-plugin     # install a plugin
-  openclaw.sh plugin alice list                  # list installed plugins
-  openclaw.sh plugin alice update --all          # update all plugins
+  openclaw.sh plugin alice install my-plugin                # install from ClawHub/npm
+  openclaw.sh plugin alice install-local ~/agent-skills     # install from local clone
+  openclaw.sh plugin alice list                             # list installed plugins
+  openclaw.sh plugin alice update --all                     # update all plugins
 EOF
   exit 1
 }
@@ -240,11 +241,34 @@ cmd_plugin() {
   fi
 
   if [[ $# -lt 1 ]]; then
-    echo "Error: 'plugin' requires a subcommand (install, list, update, enable, disable, status, doctor, inspect)."
+    echo "Error: 'plugin' requires a subcommand (install, install-local, list, update, enable, disable, status, doctor, inspect)."
     usage
   fi
 
-  docker exec "$container" openclaw plugins "$@"
+  local subcmd="$1"; shift
+
+  if [[ "$subcmd" == "install-local" ]]; then
+    # Copy a local path into the container, then install from there.
+    # Usage: openclaw.sh plugin <name> install-local <local-path>
+    if [[ $# -lt 1 ]]; then
+      echo "Error: 'install-local' requires a local path."
+      echo "Usage: openclaw.sh plugin <name> install-local <local-path>"
+      exit 1
+    fi
+    local local_path="$1"
+    local bundle_name
+    bundle_name=$(basename "$local_path")
+    local container_path="/tmp/openclaw-bundles/${bundle_name}"
+
+    echo "Copying '${local_path}' into container '${container}' at ${container_path}..."
+    docker exec "$container" mkdir -p "/tmp/openclaw-bundles"
+    docker cp "$local_path" "${container}:${container_path}"
+
+    echo "Installing plugin bundle from ${container_path}..."
+    docker exec "$container" openclaw plugins install "$container_path"
+  else
+    docker exec "$container" openclaw plugins "$subcmd" "$@"
+  fi
 }
 
 cmd_dashboard() {

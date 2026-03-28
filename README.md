@@ -71,26 +71,29 @@ Follow the instructions in ~/.codex/agent-skills/.codex/INSTALL.md
 
 ### OpenClaw
 
-OpenClaw installs this repo as a bundle from a local clone (git URL specs are not supported).
+OpenClaw rejects git URL specs, so install by cloning locally then copying into the container.
 
-1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/bos-hieu/agent-skills.git ~/.openclaw-bundles/agent-skills
-   ```
+**With `openclaw.sh` (Docker setup):**
 
-2. **Install the bundle** (run inside your OpenClaw container or on the host where `openclaw` is available):
-   ```bash
-   openclaw plugins install ~/.openclaw-bundles/agent-skills
-   ```
+```bash
+# 1. Clone to your local machine
+git clone https://github.com/bos-hieu/agent-skills.git ~/agent-skills
 
-   OpenClaw auto-detects the bundle format from `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, or `.codex-plugin/plugin.json` — no extra flags needed.
+# 2. Copy into the container and install
+openclaw.sh plugin <instance-name> install-local ~/agent-skills
 
-3. **Verify:**
-   ```bash
-   openclaw plugins list
-   ```
+# 3. Verify
+openclaw.sh plugin <instance-name> list
+```
 
-> **Docker users:** If you're running OpenClaw via `openclaw.sh`, use `openclaw.sh shell <name>` to enter the container, then run the install commands above (clone into a path that's bind-mounted, e.g. the workspace volume at `/root/.openclaw/workspace`).
+**Without Docker** (openclaw running directly on your machine):
+
+```bash
+git clone https://github.com/bos-hieu/agent-skills.git ~/agent-skills
+openclaw plugins install ~/agent-skills
+```
+
+OpenClaw auto-detects the bundle format from `.claude-plugin/plugin.json` or `.cursor-plugin/plugin.json` — no extra flags needed.
 
 ### GitHub Copilot
 
@@ -167,8 +170,8 @@ cd ~/.codex/agent-skills && git pull
 ### OpenClaw
 
 ```bash
-cd ~/.openclaw-bundles/agent-skills && git pull
-openclaw plugins install ~/.openclaw-bundles/agent-skills
+cd ~/agent-skills && git pull
+openclaw.sh plugin <instance-name> install-local ~/agent-skills
 ```
 
 ### Gemini CLI

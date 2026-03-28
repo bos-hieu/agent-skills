@@ -25,17 +25,16 @@ openclaw.sh list                      # list all instances
 openclaw.sh status                    # show running status of all instances
 
 # Plugin management
-openclaw.sh plugin alice install <package>     # install plugin (ClawHub first, then npm)
-openclaw.sh plugin alice install clawhub:<pkg> # install from ClawHub only
-openclaw.sh plugin alice install <path>        # install from local path
-openclaw.sh plugin alice list                  # list installed plugins
-openclaw.sh plugin alice update <id>           # update one plugin
-openclaw.sh plugin alice update --all          # update all plugins
-openclaw.sh plugin alice enable <id>           # enable a plugin
-openclaw.sh plugin alice disable <id>          # disable a plugin
-openclaw.sh plugin alice status                # plugin operational summary
-openclaw.sh plugin alice doctor                # plugin diagnostics
-openclaw.sh plugin alice inspect <id>          # show plugin details
+openclaw.sh plugin alice install <package>              # install from ClawHub/npm
+openclaw.sh plugin alice install-local ~/agent-skills   # install from local clone
+openclaw.sh plugin alice list                           # list installed plugins
+openclaw.sh plugin alice update <id>                    # update one plugin
+openclaw.sh plugin alice update --all                   # update all plugins
+openclaw.sh plugin alice enable <id>                    # enable a plugin
+openclaw.sh plugin alice disable <id>                   # disable a plugin
+openclaw.sh plugin alice status                         # plugin operational summary
+openclaw.sh plugin alice doctor                         # plugin diagnostics
+openclaw.sh plugin alice inspect <id>                   # show plugin details
 ```
 
 ## How It Works
@@ -100,28 +99,46 @@ openclaw.sh status
 
 Plugins extend an OpenClaw instance with new capabilities (channels, model providers, tools, skills, etc.). They are managed with the `plugin` subcommand, which runs `openclaw plugins` inside the target container.
 
+### Install from ClawHub or npm
+
 ```bash
-# Install a plugin by name (tries ClawHub, falls back to npm)
-openclaw.sh plugin alice install my-plugin
+openclaw.sh plugin alice install my-plugin          # ClawHub first, then npm
+openclaw.sh plugin alice install clawhub:my-plugin  # ClawHub only
+```
 
-# Install from ClawHub explicitly
-openclaw.sh plugin alice install clawhub:my-plugin
+### Install from a local clone (git clone → docker cp)
 
-# List all installed plugins
-openclaw.sh plugin alice list
+OpenClaw rejects git URL specs, so the workflow for installing a bundle repo (e.g. this one) is to clone it locally and then copy it into the container:
 
-# Update all plugins
-openclaw.sh plugin alice update --all
+```bash
+# 1. Clone to local machine
+git clone https://github.com/bos-hieu/agent-skills.git ~/agent-skills
 
-# Enable / disable a plugin by its ID
-openclaw.sh plugin alice enable my-plugin
-openclaw.sh plugin alice disable my-plugin
+# 2. Copy into container and install
+openclaw.sh plugin alice install-local ~/agent-skills
+```
+
+`install-local` uses `docker cp` to copy the directory into `/tmp/openclaw-bundles/<name>/` inside the container, then runs `openclaw plugins install` on that path. OpenClaw auto-detects the bundle format from `.claude-plugin/plugin.json` or `.cursor-plugin/plugin.json`.
+
+**To update:**
+```bash
+cd ~/agent-skills && git pull
+openclaw.sh plugin alice install-local ~/agent-skills
+```
+
+### Other plugin commands
+
+```bash
+openclaw.sh plugin alice list                  # list installed plugins
+openclaw.sh plugin alice update --all          # update all plugins
+openclaw.sh plugin alice enable my-plugin      # enable a plugin
+openclaw.sh plugin alice disable my-plugin     # disable a plugin
+openclaw.sh plugin alice doctor                # diagnostics
 ```
 
 **Notes:**
 - The gateway must be running (`openclaw.sh start <name>`) before installing plugins.
 - Config changes (enable/disable) take effect after an automatic gateway restart; if auto-restart is off, run `openclaw.sh restart <name>`.
-- Use `openclaw.sh plugin <name> doctor` to diagnose broken or missing plugins.
 
 ## Common Mistakes
 
