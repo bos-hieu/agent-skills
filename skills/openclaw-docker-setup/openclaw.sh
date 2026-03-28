@@ -153,23 +153,33 @@ cmd_onboard() {
 
   source "$instance_dir/instance.env"
 
-  echo "Entering container '$container' for interactive onboard..."
-  echo "Run these commands inside:"
-  echo "  # Install Go"
-  echo "  curl -sSL https://go.dev/dl/go1.26.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -"
-  echo "  export PATH=\$PATH:/usr/local/go/bin"
-  echo "  echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.bashrc"
-  echo "  npm install -g openclaw@latest"
-  echo "  openclaw setup"
-  echo "  openclaw onboard"
-  echo "  openclaw config set gateway.port ${PORT}"
-  echo "  openclaw config set gateway.controlUi.allowedOrigins '[\"http://127.0.0.1:${PORT}\",\"http://localhost:${PORT}\"]' --strict-json"
-  echo "  openclaw config set gateway.controlUi.dangerouslyDisableDeviceAuth true"
-  echo "  exit"
-  echo ""
+  echo "Setting up container '$container'..."
 
   docker start "$container" >/dev/null 2>&1 || true
-  docker exec -it "$container" bash
+
+  echo "Installing Go 1.26.1..."
+  docker exec "$container" bash -c '
+    if ! command -v go &>/dev/null; then
+      curl -sSL https://go.dev/dl/go1.26.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+      echo "export PATH=\$PATH:/usr/local/go/bin" >> /root/.bashrc
+    fi
+  '
+
+  echo "Installing openclaw..."
+  docker exec "$container" bash -c 'npm install -g openclaw@latest'
+
+  echo "Running openclaw setup and onboard..."
+  docker exec "$container" bash -c 'openclaw setup && openclaw onboard'
+
+  echo "Configuring gateway..."
+  docker exec "$container" bash -c "
+    openclaw config set gateway.port ${PORT}
+    openclaw config set gateway.controlUi.allowedOrigins '[\"http://127.0.0.1:${PORT}\",\"http://localhost:${PORT}\"]' --strict-json
+    openclaw config set gateway.controlUi.dangerouslyDisableDeviceAuth true
+  "
+
+  echo ""
+  echo "Onboard complete. Run: openclaw.sh start $name"
 }
 
 cmd_start() {
