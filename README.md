@@ -69,6 +69,32 @@ Then tell Codex:
 Follow the instructions in ~/.codex/agent-skills/.codex/INSTALL.md
 ```
 
+### OpenClaw
+
+OpenClaw rejects git URL specs, so install by cloning locally then copying into the container.
+
+**With `openclaw.sh` (Docker setup):**
+
+```bash
+# 1. Clone to your local machine
+git clone https://github.com/bos-hieu/agent-skills.git ~/agent-skills
+
+# 2. Copy into the container and install
+openclaw.sh plugin <instance-name> install-local ~/agent-skills
+
+# 3. Verify
+openclaw.sh plugin <instance-name> list
+```
+
+**Without Docker** (openclaw running directly on your machine):
+
+```bash
+git clone https://github.com/bos-hieu/agent-skills.git ~/agent-skills
+openclaw plugins install ~/agent-skills
+```
+
+OpenClaw auto-detects the bundle format from `.claude-plugin/plugin.json` or `.cursor-plugin/plugin.json` — no extra flags needed.
+
 ### GitHub Copilot
 
 Custom instructions are automatically picked up from `.github/copilot-instructions.md` when this repository is cloned. No additional setup is needed.
@@ -139,6 +165,13 @@ When a new version is released, the simplest way to upgrade is to uninstall and 
 
 ```bash
 cd ~/.codex/agent-skills && git pull
+```
+
+### OpenClaw
+
+```bash
+cd ~/agent-skills && git pull
+openclaw.sh plugin <instance-name> install-local ~/agent-skills
 ```
 
 ### Gemini CLI

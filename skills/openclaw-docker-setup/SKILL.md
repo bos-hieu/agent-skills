@@ -1,6 +1,6 @@
 ---
 name: openclaw-docker-setup
-description: Use when setting up OpenClaw in Docker, running OpenClaw gateway in a container, or troubleshooting a Dockerized OpenClaw installation. Triggers on "openclaw docker", "openclaw container", "run openclaw in docker", or "openclaw setup".
+description: Use when setting up OpenClaw in Docker, running OpenClaw gateway in a container, troubleshooting a Dockerized OpenClaw installation, or managing plugins in an OpenClaw instance. Triggers on "openclaw docker", "openclaw container", "run openclaw in docker", "openclaw setup", "openclaw plugin", or "install openclaw plugin".
 ---
 
 # OpenClaw Docker Setup
@@ -23,6 +23,18 @@ openclaw.sh shell alice               # open bash in container
 openclaw.sh remove alice              # remove container + optionally data
 openclaw.sh list                      # list all instances
 openclaw.sh status                    # show running status of all instances
+
+# Plugin management
+openclaw.sh plugin alice install <package>              # install from ClawHub/npm
+openclaw.sh plugin alice install-local ~/agent-skills   # install from local clone
+openclaw.sh plugin alice list                           # list installed plugins
+openclaw.sh plugin alice update <id>                    # update one plugin
+openclaw.sh plugin alice update --all                   # update all plugins
+openclaw.sh plugin alice enable <id>                    # enable a plugin
+openclaw.sh plugin alice disable <id>                   # disable a plugin
+openclaw.sh plugin alice status                         # plugin operational summary
+openclaw.sh plugin alice doctor                         # plugin diagnostics
+openclaw.sh plugin alice inspect <id>                   # show plugin details
 ```
 
 ## How It Works
@@ -82,6 +94,51 @@ openclaw.sh status
 # personal        openclaw-personal    18800    running      http://127.0.0.1:18800
 # testing         openclaw-testing     18810    running      http://127.0.0.1:18810
 ```
+
+## Plugin Management
+
+Plugins extend an OpenClaw instance with new capabilities (channels, model providers, tools, skills, etc.). They are managed with the `plugin` subcommand, which runs `openclaw plugins` inside the target container.
+
+### Install from ClawHub or npm
+
+```bash
+openclaw.sh plugin alice install my-plugin          # ClawHub first, then npm
+openclaw.sh plugin alice install clawhub:my-plugin  # ClawHub only
+```
+
+### Install from a local clone (git clone → docker cp)
+
+OpenClaw rejects git URL specs, so the workflow for installing a bundle repo (e.g. this one) is to clone it locally and then copy it into the container:
+
+```bash
+# 1. Clone to local machine
+git clone https://github.com/bos-hieu/agent-skills.git ~/agent-skills
+
+# 2. Copy into container and install
+openclaw.sh plugin alice install-local ~/agent-skills
+```
+
+`install-local` uses `docker cp` to copy the directory into `/tmp/openclaw-bundles/<name>/` inside the container, then runs `openclaw plugins install` on that path. OpenClaw auto-detects the bundle format from `.claude-plugin/plugin.json` or `.cursor-plugin/plugin.json`.
+
+**To update:**
+```bash
+cd ~/agent-skills && git pull
+openclaw.sh plugin alice install-local ~/agent-skills
+```
+
+### Other plugin commands
+
+```bash
+openclaw.sh plugin alice list                  # list installed plugins
+openclaw.sh plugin alice update --all          # update all plugins
+openclaw.sh plugin alice enable my-plugin      # enable a plugin
+openclaw.sh plugin alice disable my-plugin     # disable a plugin
+openclaw.sh plugin alice doctor                # diagnostics
+```
+
+**Notes:**
+- The gateway must be running (`openclaw.sh start <name>`) before installing plugins.
+- Config changes (enable/disable) take effect after an automatic gateway restart; if auto-restart is off, run `openclaw.sh restart <name>`.
 
 ## Common Mistakes
 
