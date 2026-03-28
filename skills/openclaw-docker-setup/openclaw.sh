@@ -156,7 +156,7 @@ cmd_onboard() {
   echo "Entering container '$container' for interactive onboard..."
   echo "Run these commands inside:"
   echo "  # Install Go"
-  echo "  curl -sSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -"
+  echo "  curl -sSL https://go.dev/dl/go1.26.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -"
   echo "  export PATH=\$PATH:/usr/local/go/bin"
   echo "  echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.bashrc"
   echo "  npm install -g openclaw@latest"
@@ -191,7 +191,7 @@ cmd_start() {
 #!/bin/bash
 # Install Go if not already installed
 if ! command -v go &>/dev/null; then
-  curl -sSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+  curl -sSL https://go.dev/dl/go1.26.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 fi
 export PATH=\$PATH:/usr/local/go/bin
 npm install -g openclaw@latest >/dev/null 2>&1
