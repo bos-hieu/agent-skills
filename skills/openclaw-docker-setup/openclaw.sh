@@ -155,6 +155,10 @@ cmd_onboard() {
 
   echo "Entering container '$container' for interactive onboard..."
   echo "Run these commands inside:"
+  echo "  # Install Go"
+  echo "  curl -sSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -"
+  echo "  export PATH=\$PATH:/usr/local/go/bin"
+  echo "  echo 'export PATH=\$PATH:/usr/local/go/bin' >> /root/.bashrc"
   echo "  npm install -g openclaw@latest"
   echo "  openclaw setup"
   echo "  openclaw onboard"
@@ -182,9 +186,14 @@ cmd_start() {
 
   source "$instance_dir/instance.env"
 
-  # Write startup script that installs openclaw and runs gateway as PID 1
+  # Write startup script that installs Go, openclaw and runs gateway as PID 1
   cat > "$instance_dir/config/start-gateway.sh" <<STARTEOF
 #!/bin/bash
+# Install Go if not already installed
+if ! command -v go &>/dev/null; then
+  curl -sSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+fi
+export PATH=\$PATH:/usr/local/go/bin
 npm install -g openclaw@latest >/dev/null 2>&1
 exec openclaw gateway --bind lan --port ${PORT}
 STARTEOF
