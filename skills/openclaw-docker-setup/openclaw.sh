@@ -168,18 +168,18 @@ cmd_onboard() {
   echo "Installing openclaw..."
   docker exec "$container" bash -c 'npm install -g openclaw@latest'
 
-  echo "Running openclaw setup and onboard..."
-  docker exec "$container" bash -c 'openclaw setup && openclaw onboard'
-
-  echo "Configuring gateway..."
-  docker exec "$container" bash -c "
-    openclaw config set gateway.port ${PORT}
-    openclaw config set gateway.controlUi.allowedOrigins '[\"http://127.0.0.1:${PORT}\",\"http://localhost:${PORT}\"]' --strict-json
-    openclaw config set gateway.controlUi.dangerouslyDisableDeviceAuth true
-  "
-
   echo ""
-  echo "Onboard complete. Run: openclaw.sh start $name"
+  echo "Installation done. Now entering container for manual onboard."
+  echo "Run these commands inside:"
+  echo "  openclaw setup"
+  echo "  openclaw onboard"
+  echo "  openclaw config set gateway.port ${PORT}"
+  echo "  openclaw config set gateway.controlUi.allowedOrigins '[\"http://127.0.0.1:${PORT}\",\"http://localhost:${PORT}\"]' --strict-json"
+  echo "  openclaw config set gateway.controlUi.dangerouslyDisableDeviceAuth true"
+  echo "  exit"
+  echo ""
+
+  docker exec -it "$container" bash
 }
 
 cmd_start() {
