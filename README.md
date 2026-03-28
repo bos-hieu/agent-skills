@@ -18,6 +18,7 @@ A collection of reusable skills for AI coding agents. Each skill teaches your co
 | [google-sheets](skills/google-sheets/SKILL.md) | Manage Google Sheets — create, read, write, append rows, and manage sheets via REST API. |
 | [test-cases](skills/test-cases/SKILL.md) | Generate comprehensive test cases, test plans, coverage analysis, and bug report templates for QA. |
 | [prd](skills/prd/SKILL.md) | Generate PRDs, user stories, feature specs, competitive analysis, and release notes for PMs. |
+| [ssh](skills/ssh/SKILL.md) | Manage SSH connections to servers with bastion support, tunneling, file transfer, multi-host execution, and monitoring. |
 | [openclaw-docker-setup](skills/openclaw-docker-setup/SKILL.md) | Manage multiple named OpenClaw gateway instances in Docker with auto-port assignment. |
 | [generating-claude-instructions](skills/generating-claude-instructions/SKILL.md) | Generate a CLAUDE.md file by deeply exploring source code. Only verified facts, never guesses. |
 
