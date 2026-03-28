@@ -153,9 +153,24 @@ cmd_onboard() {
 
   source "$instance_dir/instance.env"
 
-  echo "Entering container '$container' for interactive onboard..."
+  echo "Setting up container '$container'..."
+
+  docker start "$container" >/dev/null 2>&1 || true
+
+  echo "Installing Go 1.26.1..."
+  docker exec "$container" bash -c '
+    if ! command -v go &>/dev/null; then
+      curl -sSL https://go.dev/dl/go1.26.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+      echo "export PATH=\$PATH:/usr/local/go/bin" >> /root/.bashrc
+    fi
+  '
+
+  echo "Installing openclaw..."
+  docker exec "$container" bash -c 'npm install -g openclaw@latest'
+
+  echo ""
+  echo "Installation done. Now entering container for manual onboard."
   echo "Run these commands inside:"
-  echo "  npm install -g openclaw@latest"
   echo "  openclaw setup"
   echo "  openclaw onboard"
   echo "  openclaw config set gateway.port ${PORT}"
@@ -164,7 +179,6 @@ cmd_onboard() {
   echo "  exit"
   echo ""
 
-  docker start "$container" >/dev/null 2>&1 || true
   docker exec -it "$container" bash
 }
 
@@ -182,9 +196,14 @@ cmd_start() {
 
   source "$instance_dir/instance.env"
 
-  # Write startup script that installs openclaw and runs gateway as PID 1
+  # Write startup script that installs Go, openclaw and runs gateway as PID 1
   cat > "$instance_dir/config/start-gateway.sh" <<STARTEOF
 #!/bin/bash
+# Install Go if not already installed
+if ! command -v go &>/dev/null; then
+  curl -sSL https://go.dev/dl/go1.26.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+fi
+export PATH=\$PATH:/usr/local/go/bin
 npm install -g openclaw@latest >/dev/null 2>&1
 exec openclaw gateway --bind lan --port ${PORT}
 STARTEOF
