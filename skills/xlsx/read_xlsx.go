@@ -112,29 +112,92 @@ func previewSheet(f *excelize.File, sheet string, columnFilter []string, maxRows
 		return
 	}
 
-	headers := rows[0]
+	// Expand merged cell values so all cells in a merged range show the value,
+	// not just the top-left cell.
+	rows = expandMergedCells(f, sheet, rows)
+
+	// Collect non-empty rows with their 1-based Excel row numbers.
+	type numberedRow struct {
+		excelRow int
+		data     []string
+	}
+	var dataRows []numberedRow
+	for i, row := range rows {
+		if !isEmptyRow(row) {
+			dataRows = append(dataRows, numberedRow{excelRow: i + 1, data: row})
+		}
+	}
+	if len(dataRows) == 0 {
+		fmt.Println("(empty sheet)")
+		return
+	}
+
+	headers := dataRows[0].data
 	colIndexes := resolveColumnIndexes(headers, columnFilter)
 
 	selectedHeaders := selectCols(headers, colIndexes)
 	fmt.Printf("Columns (%d): %s\n", len(selectedHeaders), strings.Join(selectedHeaders, ", "))
 	fmt.Printf("Total rows (including header): %d\n", len(rows))
+	fmt.Printf("Non-empty rows: %d\n", len(dataRows))
 
 	limit := maxRows + 1 // +1 for header
-	if len(rows) < limit {
-		limit = len(rows)
+	if len(dataRows) < limit {
+		limit = len(dataRows)
 	}
 
 	fmt.Println("\nPreview:")
 	for i := 0; i < limit; i++ {
-		label := fmt.Sprintf("row %d", i)
+		nr := dataRows[i]
+		label := fmt.Sprintf("row %d (Excel row %d)", i, nr.excelRow)
 		if i == 0 {
-			label = "header"
+			label = fmt.Sprintf("header (Excel row %d)", nr.excelRow)
 		}
-		fmt.Printf("  [%s] %v\n", label, selectCols(rows[i], colIndexes))
+		fmt.Printf("  [%s] %v\n", label, selectCols(nr.data, colIndexes))
 	}
-	if len(rows) > limit {
-		fmt.Printf("  ... (%d more rows)\n", len(rows)-limit)
+	if len(dataRows) > limit {
+		fmt.Printf("  ... (%d more non-empty rows)\n", len(dataRows)-limit)
 	}
+}
+
+// expandMergedCells fills every cell in a merged range with the top-left cell's
+// value, so preview rows are not silently empty for merged-cell layouts.
+func expandMergedCells(f *excelize.File, sheet string, rows [][]string) [][]string {
+	merges, err := f.GetMergedCells(sheet)
+	if err != nil {
+		return rows
+	}
+	for _, merge := range merges {
+		startCol, startRow, err1 := excelize.CellNameToCoordinates(merge.GetStartAxis())
+		endCol, endRow, err2 := excelize.CellNameToCoordinates(merge.GetEndAxis())
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		value := merge.GetCellValue()
+		for r := startRow; r <= endRow; r++ {
+			rowIdx := r - 1
+			if rowIdx >= len(rows) {
+				continue
+			}
+			for c := startCol; c <= endCol; c++ {
+				colIdx := c - 1
+				for len(rows[rowIdx]) <= colIdx {
+					rows[rowIdx] = append(rows[rowIdx], "")
+				}
+				rows[rowIdx][colIdx] = value
+			}
+		}
+	}
+	return rows
+}
+
+// isEmptyRow returns true when every cell in the row is blank.
+func isEmptyRow(row []string) bool {
+	for _, cell := range row {
+		if strings.TrimSpace(cell) != "" {
+			return false
+		}
+	}
+	return true
 }
 
 // exportCSV exports a sheet to CSV (stdout or file).
