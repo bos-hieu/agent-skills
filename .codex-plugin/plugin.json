@@ -2,7 +2,7 @@
   "name": "agent-skills",
   "displayName": "Agent Skills",
   "description": "A collection of reusable skills for AI coding agents: database, pdf, xlsx, browser-test, go-issue-solver, confluence, jira, google-docs, google-drive, google-sheets, test-cases, prd, ssh, openclaw-docker-setup, generating CLAUDE.md",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "author": {
     "name": "bos-hieu"
   },

@@ -112,29 +112,89 @@ func previewSheet(f *excelize.File, sheet string, columnFilter []string, maxRows
 		return
 	}
 
-	headers := rows[0]
+	// Expand merged cell values so all cells in a merged range show the value,
+	// not just the top-left cell.
+	rows = expandMergedCells(f, sheet, rows)
+
+	// Collect non-empty rows with their 1-based Excel row numbers.
+	type numberedRow struct {
+		excelRow int
+		data     []string
+	}
+	var dataRows []numberedRow
+	for i, row := range rows {
+		if !isEmptyRow(row) {
+			dataRows = append(dataRows, numberedRow{excelRow: i + 1, data: row})
+		}
+	}
+	if len(dataRows) == 0 {
+		fmt.Println("(empty sheet)")
+		return
+	}
+
+	headers := dataRows[0].data
 	colIndexes := resolveColumnIndexes(headers, columnFilter)
 
 	selectedHeaders := selectCols(headers, colIndexes)
 	fmt.Printf("Columns (%d): %s\n", len(selectedHeaders), strings.Join(selectedHeaders, ", "))
 	fmt.Printf("Total rows (including header): %d\n", len(rows))
+	fmt.Printf("Non-empty rows: %d\n", len(dataRows))
 
 	limit := maxRows + 1 // +1 for header
-	if len(rows) < limit {
-		limit = len(rows)
+	if len(dataRows) < limit {
+		limit = len(dataRows)
 	}
 
 	fmt.Println("\nPreview:")
 	for i := 0; i < limit; i++ {
-		label := fmt.Sprintf("row %d", i)
+		nr := dataRows[i]
+		label := fmt.Sprintf("row %d (Excel row %d)", i, nr.excelRow)
 		if i == 0 {
-			label = "header"
+			label = fmt.Sprintf("header (Excel row %d)", nr.excelRow)
 		}
-		fmt.Printf("  [%s] %v\n", label, selectCols(rows[i], colIndexes))
+		fmt.Printf("  [%s] %v\n", label, selectCols(nr.data, colIndexes))
 	}
-	if len(rows) > limit {
-		fmt.Printf("  ... (%d more rows)\n", len(rows)-limit)
+	if len(dataRows) > limit {
+		fmt.Printf("  ... (%d more non-empty rows)\n", len(dataRows)-limit)
 	}
+}
+
+// expandMergedCells fills empty cells by querying excelize's GetCellValue,
+// which resolves merged-cell values natively without manual range walking.
+func expandMergedCells(f *excelize.File, sheet string, rows [][]string) [][]string {
+	maxCols := 0
+	for _, row := range rows {
+		if len(row) > maxCols {
+			maxCols = len(row)
+		}
+	}
+	for rowIdx, row := range rows {
+		for len(row) < maxCols {
+			row = append(row, "")
+		}
+		for colIdx := range row {
+			if strings.TrimSpace(row[colIdx]) == "" {
+				cellName, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
+				if err != nil {
+					continue
+				}
+				val, _ := f.GetCellValue(sheet, cellName)
+				row[colIdx] = val
+			}
+		}
+		rows[rowIdx] = row
+	}
+	return rows
+}
+
+// isEmptyRow returns true when every cell in the row is blank.
+func isEmptyRow(row []string) bool {
+	for _, cell := range row {
+		if strings.TrimSpace(cell) != "" {
+			return false
+		}
+	}
+	return true
 }
 
 // exportCSV exports a sheet to CSV (stdout or file).
@@ -145,6 +205,17 @@ func exportCSV(f *excelize.File, sheet string, columnFilter []string, outPath st
 	}
 	if len(rows) == 0 {
 		log.Fatalf("sheet %q is empty", sheet)
+	}
+
+	rows = expandMergedCells(f, sheet, rows)
+
+	// Find first non-empty row to use as header for column filtering.
+	var headers []string
+	for _, row := range rows {
+		if !isEmptyRow(row) {
+			headers = row
+			break
+		}
 	}
 
 	var w *csv.Writer
@@ -161,7 +232,7 @@ func exportCSV(f *excelize.File, sheet string, columnFilter []string, outPath st
 	}
 	defer w.Flush()
 
-	colIndexes := resolveColumnIndexes(rows[0], columnFilter)
+	colIndexes := resolveColumnIndexes(headers, columnFilter)
 
 	for _, row := range rows {
 		if err := w.Write(selectCols(row, colIndexes)); err != nil {
@@ -187,9 +258,15 @@ func searchKeyword(f *excelize.File, sheets []string, keyword string) {
 			continue
 		}
 
+		rows = expandMergedCells(f, sheet, rows)
+
+		// Use first non-empty row as headers for column labels.
 		var headers []string
-		if len(rows) > 0 {
-			headers = rows[0]
+		for _, row := range rows {
+			if !isEmptyRow(row) {
+				headers = row
+				break
+			}
 		}
 
 		for rowIdx, row := range rows {
