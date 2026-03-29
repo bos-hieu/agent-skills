@@ -159,33 +159,30 @@ func previewSheet(f *excelize.File, sheet string, columnFilter []string, maxRows
 	}
 }
 
-// expandMergedCells fills every cell in a merged range with the top-left cell's
-// value, so preview rows are not silently empty for merged-cell layouts.
+// expandMergedCells fills empty cells by querying excelize's GetCellValue,
+// which resolves merged-cell values natively without manual range walking.
 func expandMergedCells(f *excelize.File, sheet string, rows [][]string) [][]string {
-	merges, err := f.GetMergedCells(sheet)
-	if err != nil {
-		return rows
+	maxCols := 0
+	for _, row := range rows {
+		if len(row) > maxCols {
+			maxCols = len(row)
+		}
 	}
-	for _, merge := range merges {
-		startCol, startRow, err1 := excelize.CellNameToCoordinates(merge.GetStartAxis())
-		endCol, endRow, err2 := excelize.CellNameToCoordinates(merge.GetEndAxis())
-		if err1 != nil || err2 != nil {
-			continue
+	for rowIdx, row := range rows {
+		for len(row) < maxCols {
+			row = append(row, "")
 		}
-		value := merge.GetCellValue()
-		for r := startRow; r <= endRow; r++ {
-			rowIdx := r - 1
-			if rowIdx >= len(rows) {
-				continue
-			}
-			for c := startCol; c <= endCol; c++ {
-				colIdx := c - 1
-				for len(rows[rowIdx]) <= colIdx {
-					rows[rowIdx] = append(rows[rowIdx], "")
+		for colIdx := range row {
+			if strings.TrimSpace(row[colIdx]) == "" {
+				cellName, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx+1)
+				if err != nil {
+					continue
 				}
-				rows[rowIdx][colIdx] = value
+				val, _ := f.GetCellValue(sheet, cellName)
+				row[colIdx] = val
 			}
 		}
+		rows[rowIdx] = row
 	}
 	return rows
 }
