@@ -207,6 +207,17 @@ func exportCSV(f *excelize.File, sheet string, columnFilter []string, outPath st
 		log.Fatalf("sheet %q is empty", sheet)
 	}
 
+	rows = expandMergedCells(f, sheet, rows)
+
+	// Find first non-empty row to use as header for column filtering.
+	var headers []string
+	for _, row := range rows {
+		if !isEmptyRow(row) {
+			headers = row
+			break
+		}
+	}
+
 	var w *csv.Writer
 	if outPath != "" {
 		file, err := os.Create(outPath)
@@ -221,7 +232,7 @@ func exportCSV(f *excelize.File, sheet string, columnFilter []string, outPath st
 	}
 	defer w.Flush()
 
-	colIndexes := resolveColumnIndexes(rows[0], columnFilter)
+	colIndexes := resolveColumnIndexes(headers, columnFilter)
 
 	for _, row := range rows {
 		if err := w.Write(selectCols(row, colIndexes)); err != nil {
@@ -247,9 +258,15 @@ func searchKeyword(f *excelize.File, sheets []string, keyword string) {
 			continue
 		}
 
+		rows = expandMergedCells(f, sheet, rows)
+
+		// Use first non-empty row as headers for column labels.
 		var headers []string
-		if len(rows) > 0 {
-			headers = rows[0]
+		for _, row := range rows {
+			if !isEmptyRow(row) {
+				headers = row
+				break
+			}
 		}
 
 		for rowIdx, row := range rows {
