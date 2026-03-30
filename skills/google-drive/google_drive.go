@@ -255,9 +255,15 @@ func driveRequest(token, method, rawURL string, body io.Reader, contentType stri
 const driveAPIBase = "https://www.googleapis.com/drive/v3"
 const uploadAPIBase = "https://www.googleapis.com/upload/drive/v3"
 
+func addSharedDriveParams(params url.Values) {
+	params.Set("supportsAllDrives", "true")
+	params.Set("includeItemsFromAllDrives", "true")
+}
+
 // listFiles lists files in Google Drive.
 func listFiles(token, query, folderID, format string, maxResults int) {
 	params := url.Values{}
+	addSharedDriveParams(params)
 	params.Set("pageSize", fmt.Sprintf("%d", maxResults))
 	params.Set("fields", "files(id,name,mimeType,size,modifiedTime,parents)")
 
@@ -318,6 +324,7 @@ func listFiles(token, query, folderID, format string, maxResults int) {
 // getFile retrieves file metadata.
 func getFile(token, fileID, format string) {
 	params := url.Values{}
+	addSharedDriveParams(params)
 	params.Set("fields", "id,name,mimeType,size,modifiedTime,createdTime,parents,webViewLink,owners,shared")
 	u := driveAPIBase + "/files/" + url.PathEscape(fileID) + "?" + params.Encode()
 	data, status, err := driveRequest(token, "GET", u, nil, "")
@@ -373,7 +380,10 @@ func getFile(token, fileID, format string) {
 // downloadFile downloads file content.
 func downloadFile(token, fileID, output string) {
 	// First get metadata to determine mime type.
-	metaURL := driveAPIBase + "/files/" + url.PathEscape(fileID) + "?fields=mimeType,name"
+	metaParams := url.Values{}
+	addSharedDriveParams(metaParams)
+	metaParams.Set("fields", "mimeType,name")
+	metaURL := driveAPIBase + "/files/" + url.PathEscape(fileID) + "?" + metaParams.Encode()
 	metaData, metaStatus, err := driveRequest(token, "GET", metaURL, nil, "")
 	if err != nil {
 		log.Fatalf("cannot get file metadata: %v", err)
@@ -400,7 +410,11 @@ func downloadFile(token, fileID, output string) {
 	case "application/vnd.google-apps.drawing":
 		downloadURL = driveAPIBase + "/files/" + url.PathEscape(fileID) + "/export?mimeType=image/png"
 	default:
-		downloadURL = driveAPIBase + "/files/" + url.PathEscape(fileID) + "?alt=media"
+		downloadURL = driveAPIBase + "/files/" + url.PathEscape(fileID) + "?alt=media&supportsAllDrives=true"
+	}
+
+	if strings.Contains(downloadURL, "/export?") {
+		downloadURL += "&supportsAllDrives=true"
 	}
 
 	req, err := http.NewRequest("GET", downloadURL, nil)
@@ -480,7 +494,7 @@ func uploadFile(token, localPath, title, folderID, format string) {
 	body.Write(fileData)
 	body.WriteString("\r\n--" + boundary + "--\r\n")
 
-	u := uploadAPIBase + "/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink"
+	u := uploadAPIBase + "/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink&supportsAllDrives=true"
 	contentType := "multipart/related; boundary=" + boundary
 	data, status, err := driveRequest(token, "POST", u, &body, contentType)
 	if err != nil {
@@ -529,7 +543,7 @@ func mkdirDrive(token, title, folderID, format string) {
 	}
 	metaJSON, _ := json.Marshal(metadata)
 
-	u := driveAPIBase + "/files?fields=id,name,mimeType,webViewLink"
+	u := driveAPIBase + "/files?fields=id,name,mimeType,webViewLink&supportsAllDrives=true"
 	data, status, err := driveRequest(token, "POST", u, bytes.NewReader(metaJSON), "application/json")
 	if err != nil {
 		log.Fatalf("cannot create folder: %v", err)
@@ -561,7 +575,7 @@ func mkdirDrive(token, title, folderID, format string) {
 // deleteFile moves a file to trash.
 func deleteFile(token, fileID string) {
 	metaJSON := []byte(`{"trashed":true}`)
-	u := driveAPIBase + "/files/" + url.PathEscape(fileID)
+	u := driveAPIBase + "/files/" + url.PathEscape(fileID) + "?supportsAllDrives=true"
 	data, status, err := driveRequest(token, "PATCH", u, bytes.NewReader(metaJSON), "application/json")
 	if err != nil {
 		log.Fatalf("cannot trash file: %v", err)
@@ -579,6 +593,7 @@ func searchFiles(token, query, format string, maxResults int) {
 		strings.ReplaceAll(query, "'", "\\'"))
 
 	params := url.Values{}
+	addSharedDriveParams(params)
 	params.Set("q", q)
 	params.Set("pageSize", fmt.Sprintf("%d", maxResults))
 	params.Set("fields", "files(id,name,mimeType,size,modifiedTime)")
@@ -645,7 +660,7 @@ func shareFile(token, fileID, email, role string) {
 	}
 	payloadJSON, _ := json.Marshal(payload)
 
-	u := driveAPIBase + "/files/" + url.PathEscape(fileID) + "/permissions"
+	u := driveAPIBase + "/files/" + url.PathEscape(fileID) + "/permissions?supportsAllDrives=true"
 	data, status, err := driveRequest(token, "POST", u, bytes.NewReader(payloadJSON), "application/json")
 	if err != nil {
 		log.Fatalf("cannot share file: %v", err)
