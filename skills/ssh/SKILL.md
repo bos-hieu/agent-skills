@@ -44,6 +44,8 @@ ${CLAUDE_SKILL_DIR}/ssh-manager.sh config --remove-host <name> [--scope global]
 ${CLAUDE_SKILL_DIR}/ssh-manager.sh config --add-tunnel <host> --tunnel-name <name> --tunnel-mapping "L:R:P"
 ${CLAUDE_SKILL_DIR}/ssh-manager.sh config --remove-tunnel <host> --tunnel-name <name>
 ${CLAUDE_SKILL_DIR}/ssh-manager.sh config --show-config
+${CLAUDE_SKILL_DIR}/ssh-manager.sh config --get <name>          # get host details
+${CLAUDE_SKILL_DIR}/ssh-manager.sh config --get-by-tag <tag>    # get hosts by tag
 ```
 
 ## Commands
