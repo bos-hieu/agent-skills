@@ -2,7 +2,7 @@
   "name": "agent-skills",
   "displayName": "Agent Skills",
   "description": "A collection of reusable skills for AI coding agents: generating CLAUDE.md and more",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "author": {
     "name": "bos-hieu"
   },

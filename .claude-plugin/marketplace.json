@@ -8,7 +8,7 @@
     {
       "name": "agent-skills",
       "description": "A collection of reusable skills for AI coding agents: database, pdf, xlsx, browser-test, go-issue-solver, generating CLAUDE.md",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "source": "./"
     }
   ]
