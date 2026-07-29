@@ -11,7 +11,7 @@ A collection of reusable skills for AI coding agents. Each skill teaches your co
 | [xlsx](skills/xlsx/SKILL.md) | Read Excel .xlsx/.xlsm files with sheet selection, column filtering, CSV export, and keyword search. |
 | [browser-test](skills/browser-test/SKILL.md) | Run and debug Playwright browser tests (API, E2E, smoke) with smart filtering and failure reporting. |
 | [go-issue-solver](skills/go-issue-solver/SKILL.md) | Analyze and solve Go codebase issues — search, diagnose, scaffold fixes, and run tests. |
-| [confluence](skills/confluence/SKILL.md) | Manage Confluence pages — create, read, update, search, and delete wiki pages via REST API. |
+| [confluence](skills/confluence/SKILL.md) | Manage Confluence pages and folders — create, read, update, move, search, and delete wiki content via REST API. |
 | [jira](skills/jira/SKILL.md) | Manage Jira issues — create, update, transition, search, comment, and assign issues via REST API. |
 | [google-docs](skills/google-docs/SKILL.md) | Manage Google Docs — create, read, append, and find-replace in documents via REST API. |
 | [google-drive](skills/google-drive/SKILL.md) | Manage Google Drive — list, upload, download, search, and share files via REST API. |
